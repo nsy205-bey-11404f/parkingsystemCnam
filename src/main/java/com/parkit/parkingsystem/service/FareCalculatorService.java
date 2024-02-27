@@ -1,9 +1,20 @@
 package com.parkit.parkingsystem.service;
 
 import com.parkit.parkingsystem.constants.Fare;
+import com.parkit.parkingsystem.dao.TicketDAO;
 import com.parkit.parkingsystem.model.Ticket;
 
 public class FareCalculatorService {
+
+    IUserService userService;
+
+    public FareCalculatorService() {
+        this(new UserService(new TicketDAO()));
+    }
+
+    public FareCalculatorService(IUserService userService) {
+        this.userService = userService;
+    }
 
     public void calculateFare(Ticket ticket){
         if( (ticket.getOutTime() == null) || (ticket.getOutTime().before(ticket.getInTime())) ){
@@ -14,10 +25,11 @@ public class FareCalculatorService {
         long outMinutes = ticket.getOutTime().getTime()/1000/60;
 
         long durationm = outMinutes - inMinutes;
+  
         double rate = 1.0;
-
+    
         int duration = (int) durationm / 60; 
-        if (durationm < 15) {
+        if (durationm <= 30) { // Stationnement gratuit pour les 30 premières minutes
             rate = 0.0;
         } else if (durationm < 60) {
             rate = 0.75;
@@ -35,5 +47,19 @@ public class FareCalculatorService {
             }
             default: throw new IllegalArgumentException("Unkown Parking Type");
         }
+    
+        double price = ticket.getPrice();
+        if (price == 0) {
+            return;
+        }
+
+        boolean isRecurrentUser = userService.isRecurrentUser(ticket.getVehicleRegNumber());
+        if (isRecurrentUser) {
+            ticket.setPrice(price - (0.05 * price));
+        }
+    }
+
+    public void setUserService(IUserService userService) {
+        this.userService = userService;
     }
 }

@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 
 public class TicketDAO {
@@ -85,5 +86,25 @@ public class TicketDAO {
             dataBaseConfig.closeConnection(con);
         }
         return false;
+    }
+
+    public int countTickets(String vehicleNumber) {
+        int tickets = 0;
+        ResultSet rs = null;
+        try (Connection conn = dataBaseConfig.getConnection();
+                PreparedStatement ps = conn.prepareStatement(DBConstants.COUNT_USER_TICKETS)) {
+            ps.setString(1, vehicleNumber);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                tickets = rs.getInt(1);
+            }
+        } catch (SQLException | ClassNotFoundException exc) {
+            logger.error("Error getting user ticket count", exc);
+        } finally {
+            if (rs != null) {
+                dataBaseConfig.closeResultSet(rs);
+            }
+        }
+        return tickets;
     }
 }

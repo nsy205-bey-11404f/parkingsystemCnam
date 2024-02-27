@@ -5,11 +5,17 @@ import com.parkit.parkingsystem.constants.ParkingType;
 import com.parkit.parkingsystem.model.ParkingSpot;
 import com.parkit.parkingsystem.model.Ticket;
 import com.parkit.parkingsystem.service.FareCalculatorService;
+import com.parkit.parkingsystem.service.IUserService;
+import com.parkit.parkingsystem.service.UserService;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.util.Date;
 
@@ -17,6 +23,9 @@ public class FareCalculatorServiceTest {
 
     private static FareCalculatorService fareCalculatorService;
     private Ticket ticket;
+    
+    @Mock
+    public UserService userService;
 
     @BeforeAll
     private static void setUp() {
@@ -122,6 +131,75 @@ public class FareCalculatorServiceTest {
         ticket.setParkingSpot(parkingSpot);
         fareCalculatorService.calculateFare(ticket);
         assertEquals( (24 * Fare.CAR_RATE_PER_HOUR) , ticket.getPrice());
+    }
+
+    @Test
+    public void calculateFareCarFirstThirtyMinutesParkingTime(){
+        // arrange
+        Date inTime = new Date();
+        inTime.setTime( System.currentTimeMillis() - ( 30 * 60 * 1000) ); // First 30 minutes are free
+        Date outTime = new Date();
+        ParkingSpot parkingSpot = new ParkingSpot(1, ParkingType.CAR,false);
+
+        ticket.setInTime(inTime);
+        ticket.setOutTime(outTime);
+        ticket.setParkingSpot(parkingSpot);
+        
+        // act
+        fareCalculatorService.calculateFare(ticket);
+        
+        // execute
+        assertEquals(0.0, ticket.getPrice());
+    }
+
+    @Test
+    public void calculateRecurrentUserFareCar(){
+        // arrange
+        Date inTime = new Date();
+        inTime.setTime( System.currentTimeMillis() - (60 * 60 * 1000) );
+        Date outTime = new Date();
+        ParkingSpot parkingSpot = new ParkingSpot(1, ParkingType.CAR,false);
+
+        ticket.setInTime(inTime);
+        ticket.setOutTime(outTime);
+        ticket.setParkingSpot(parkingSpot);
+       
+        FareCalculatorService fareCalculatorServiceWithReccurentUser = new FareCalculatorService(new StubUserService());
+        
+        // act
+        fareCalculatorServiceWithReccurentUser.calculateFare(ticket);
+   
+        // assert
+        assertEquals((Fare.CAR_RATE_PER_HOUR - (0.05 * Fare.CAR_RATE_PER_HOUR)), ticket.getPrice());
+
+    }
+
+    @Test
+    public void calculateRecurrentUserFareBike(){
+        // arrange
+        Date inTime = new Date();
+        inTime.setTime( System.currentTimeMillis() - (  60 * 60 * 1000) );
+        Date outTime = new Date();
+        ParkingSpot parkingSpot = new ParkingSpot(1, ParkingType.BIKE,false);
+
+        ticket.setInTime(inTime);
+        ticket.setOutTime(outTime);
+        ticket.setParkingSpot(parkingSpot);
+
+        FareCalculatorService fareCalculatorServiceWithReccurentUser = new FareCalculatorService(new StubUserService());
+        
+        // act
+        fareCalculatorServiceWithReccurentUser.calculateFare(ticket);
+
+        // assert
+        assertEquals((Fare.BIKE_RATE_PER_HOUR - (0.05 * Fare.BIKE_RATE_PER_HOUR)), ticket.getPrice());
+    }
+
+    class StubUserService implements IUserService {
+        @Override
+        public boolean isRecurrentUser(String vehicleNumber) {
+            return true;
+        }
     }
 
 }
